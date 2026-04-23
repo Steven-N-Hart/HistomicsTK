@@ -1,3 +1,5 @@
+import os
+
 from histomicstk.cli.utils import CLIArgumentParser
 
 
@@ -15,6 +17,56 @@ def _parse_csv_list(value):
     return [item.strip() for item in value.split(',') if item.strip()]
 
 
+def _stage_slides_from_girder(item_ids, wsi_dir, api_url, token):
+    """Download every file of each Girder item into a per-item subdir of wsi_dir.
+
+    Returns a list of relative paths (one per item, relative to wsi_dir)
+    naming the representative slide file for each item — the file registered
+    in Girder as the item's largeImage, or the first file as a fallback.
+    """
+    import girder_client
+
+    if not api_url or not token:
+        msg = (
+            'slide_item_ids was provided but girderApiUrl/girderToken were not '
+            'injected. Slicer CLI Web should populate these automatically.'
+        )
+        raise RuntimeError(msg)
+
+    os.makedirs(wsi_dir, exist_ok=True)
+    gc = girder_client.GirderClient(apiUrl=api_url)
+    gc.setToken(token)
+
+    representatives = []
+    for item_id in item_ids:
+        item = gc.getItem(item_id)
+        item_name = item.get('name') or item_id
+        item_dir = os.path.join(wsi_dir, item_name)
+        rep_file_id = (item.get('largeImage') or {}).get('fileId')
+
+        files = list(gc.listFile(item_id))
+        if not files:
+            print(f'  WARNING: item {item_name} ({item_id}) has no files; skipping')
+            continue
+
+        if os.path.isdir(item_dir) and os.listdir(item_dir):
+            print(f'  Skipping download for item {item_name}: {item_dir} already populated')
+        else:
+            print(f'  Downloading item {item_name} ({item_id}) -> {item_dir}')
+            os.makedirs(item_dir, exist_ok=True)
+            for f in files:
+                dest = os.path.join(item_dir, f['name'])
+                gc.downloadFile(f['_id'], dest)
+
+        rep_name = next(
+            (f['name'] for f in files if str(f['_id']) == str(rep_file_id)),
+            files[0]['name'],
+        )
+        representatives.append(os.path.join(item_name, rep_name))
+
+    return representatives
+
+
 def main(args):
     try:
         from trident import Processor
@@ -24,6 +76,34 @@ def main(args):
     except ImportError as e:
         msg = 'TRIDENT is not installed. Install it with: pip install /opt/TRIDENT'
         raise RuntimeError(msg) from e
+
+    item_ids = _parse_csv_list(getattr(args, 'slide_item_ids', None))
+    if item_ids:
+        print(f'Staging {len(item_ids)} slide(s) from Girder into {args.wsi_dir}...')
+        representatives = _stage_slides_from_girder(
+            item_ids=item_ids,
+            wsi_dir=args.wsi_dir,
+            api_url=getattr(args, 'girderApiUrl', None),
+            token=getattr(args, 'girderToken', None),
+        )
+
+        if representatives:
+            os.makedirs(args.job_dir, exist_ok=True)
+            csv_path = os.path.join(args.job_dir, '_slide_list.csv')
+            with open(csv_path, 'w') as fh:
+                fh.write('wsi\n')
+                for rel in representatives:
+                    fh.write(f'{rel}\n')
+            args.custom_list_of_wsis = csv_path
+            print(f'  Wrote slide list ({len(representatives)} entries) to {csv_path}')
+
+            # TRIDENT's WSIFactory routes .dcm to ImageWSI (PIL) in auto mode,
+            # which cannot read DICOM WSI. Force OpenSlide (libopenslide >= 4.0
+            # has DICOM support and auto-discovers sibling instances in the same
+            # directory) when DICOM is present.
+            if args.reader_type == 'auto' and any(r.lower().endswith('.dcm') for r in representatives):
+                print('  Detected DICOM in staged slides; forcing reader_type=openslide')
+                args.reader_type = 'openslide'
 
     device = f'cuda:{args.gpu}' if args.gpu >= 0 else 'cpu'
 

@@ -26,7 +26,7 @@
     <string>
       <name>wsi_dir</name>
       <label>WSI Source Directory</label>
-      <description>Container-internal path to the directory containing whole-slide image files.</description>
+      <description>Container-internal path to the directory where slide files live (or where they will be downloaded if Slide Item IDs is set).</description>
       <longflag>wsi_dir</longflag>
       <default></default>
     </string>
@@ -35,6 +35,32 @@
       <label>Output Directory</label>
       <description>Container-internal path where all pipeline outputs (segmentation masks, patch coordinates, embeddings) will be saved.</description>
       <longflag>job_dir</longflag>
+      <default></default>
+    </string>
+    <string>
+      <name>slide_item_ids</name>
+      <label>Slide Item IDs</label>
+      <description>Comma-separated Girder item IDs (one item == one slide) to download into the WSI Source Directory before processing. Each item's files are placed in their own subdirectory so multi-file DICOM series stay grouped. Leave empty to use slides already present.</description>
+      <longflag>slide_item_ids</longflag>
+      <default></default>
+    </string>
+  </parameters>
+
+  <parameters advanced="true">
+    <label>Girder API URL and Key</label>
+    <description>Auto-injected by Slicer CLI Web; do not set manually.</description>
+    <string>
+      <name>girderApiUrl</name>
+      <longflag>api-url</longflag>
+      <label>Girder API URL</label>
+      <description>A Girder API URL (auto-injected).</description>
+      <default></default>
+    </string>
+    <string>
+      <name>girderToken</name>
+      <longflag>girder-token</longflag>
+      <label>Girder Token</label>
+      <description>A Girder token (auto-injected).</description>
       <default></default>
     </string>
   </parameters>
@@ -268,9 +294,9 @@
     <boolean>
       <name>search_nested</name>
       <label>Search Nested Directories</label>
-      <description>Recursively search subdirectories of the WSI source directory for slide files.</description>
+      <description>Recursively search subdirectories of the WSI source directory for slide files. Required when slides are staged via Slide Item IDs (each item lands in its own subdirectory).</description>
       <longflag>search_nested</longflag>
-      <default>false</default>
+      <default>true</default>
     </boolean>
   </parameters>
 
@@ -280,9 +306,9 @@
     <string>
       <name>wsi_ext</name>
       <label>WSI File Extensions</label>
-      <description>Comma-separated list of allowed file extensions (e.g., ".svs,.ndpi,.tif"). Leave empty to accept all supported formats.</description>
+      <description>Comma-separated list of allowed file extensions (e.g., ".svs,.ndpi,.tif,.dcm"). The default includes .dcm for DICOM series staged via Slide Item IDs. Leave empty to accept TRIDENT's built-in defaults (which exclude .dcm).</description>
       <longflag>wsi_ext</longflag>
-      <default></default>
+      <default>.svs,.ndpi,.tif,.tiff,.mrxs,.scn,.vms,.vmu,.sdpc,.dcm</default>
     </string>
     <string-enumeration>
       <name>reader_type</name>

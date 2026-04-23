@@ -1,0 +1,329 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<executable>
+  <category>HistomicsTK</category>
+  <title>TRIDENT Embeddings</title>
+  <description>Generate patch-level and slide-level embeddings from a directory of whole-slide images using the TRIDENT pipeline (tissue segmentation, patch extraction, feature extraction). All paths refer to container-internal paths; model checkpoints must be pre-downloaded and mounted into the container.</description>
+  <version>0.1.0</version>
+  <documentation-url>https://github.com/mahmoodlab/TRIDENT</documentation-url>
+  <license>CC BY-NC-ND 4.0</license>
+  <contributor>HistomicsUI</contributor>
+  <acknowledgements>TRIDENT by the Mahmood Lab, Harvard Medical School.</acknowledgements>
+
+  <parameters>
+    <label>Pipeline Control</label>
+    <description>Core pipeline parameters</description>
+    <string-enumeration>
+      <name>task</name>
+      <label>Task</label>
+      <description>Pipeline stage(s) to run. "all" runs segmentation, patch extraction, and feature extraction end-to-end.</description>
+      <longflag>task</longflag>
+      <element>all</element>
+      <element>seg</element>
+      <element>coords</element>
+      <element>feat</element>
+      <default>all</default>
+    </string-enumeration>
+    <string>
+      <name>wsi_dir</name>
+      <label>WSI Source Directory</label>
+      <description>Container-internal path to the directory containing whole-slide image files.</description>
+      <longflag>wsi_dir</longflag>
+      <default></default>
+    </string>
+    <string>
+      <name>job_dir</name>
+      <label>Output Directory</label>
+      <description>Container-internal path where all pipeline outputs (segmentation masks, patch coordinates, embeddings) will be saved.</description>
+      <longflag>job_dir</longflag>
+      <default></default>
+    </string>
+  </parameters>
+
+  <parameters>
+    <label>Patch Encoder</label>
+    <description>Foundation model for generating patch-level feature embeddings</description>
+    <string-enumeration>
+      <name>patch_encoder</name>
+      <label>Patch Encoder Model</label>
+      <description>Foundation model for patch-level feature extraction. Recommended patch size and magnification vary by model — see guidance in the UI.</description>
+      <longflag>patch_encoder</longflag>
+      <element>conch_v15</element>
+      <element>conch_v1</element>
+      <element>uni_v1</element>
+      <element>uni_v2</element>
+      <element>virchow</element>
+      <element>virchow2</element>
+      <element>phikon</element>
+      <element>phikon_v2</element>
+      <element>gigapath</element>
+      <element>hoptimus0</element>
+      <element>hoptimus1</element>
+      <element>musk</element>
+      <element>midnight12k</element>
+      <element>kaiko-vitb8</element>
+      <element>kaiko-vitb16</element>
+      <element>kaiko-vits8</element>
+      <element>kaiko-vits16</element>
+      <element>kaiko-vitl14</element>
+      <element>lunit-vits8</element>
+      <element>hibou_l</element>
+      <element>ctranspath</element>
+      <element>resnet50</element>
+      <default>conch_v15</default>
+    </string-enumeration>
+    <string>
+      <name>patch_encoder_ckpt_path</name>
+      <label>Patch Encoder Checkpoint Path</label>
+      <description>Container-internal path to a locally downloaded model checkpoint file (.pt, .pth, .bin, or .safetensors). Leave empty to download automatically (requires network access).</description>
+      <longflag>patch_encoder_ckpt_path</longflag>
+      <default></default>
+    </string>
+  </parameters>
+
+  <parameters>
+    <label>Patching</label>
+    <description>Patch extraction parameters (used when task is coords or all)</description>
+    <integer>
+      <name>mag</name>
+      <label>Magnification</label>
+      <description>Target magnification level at which patches are extracted.</description>
+      <longflag>mag</longflag>
+      <default>20</default>
+      <constraints>
+        <minimum>5</minimum>
+        <maximum>80</maximum>
+        <step>1</step>
+      </constraints>
+    </integer>
+    <integer>
+      <name>patch_size</name>
+      <label>Patch Size (pixels)</label>
+      <description>Size of each extracted patch in pixels (square). Recommended values vary by encoder model.</description>
+      <longflag>patch_size</longflag>
+      <default>512</default>
+    </integer>
+    <integer>
+      <name>overlap</name>
+      <label>Patch Overlap (pixels)</label>
+      <description>Pixel overlap between adjacent patches. 0 means no overlap.</description>
+      <longflag>overlap</longflag>
+      <default>0</default>
+    </integer>
+    <double>
+      <name>min_tissue_proportion</name>
+      <label>Minimum Tissue Proportion</label>
+      <description>Minimum fraction of tissue required to keep a patch (0.0 to 1.0). Patches with less tissue than this threshold are discarded.</description>
+      <longflag>min_tissue_proportion</longflag>
+      <default>0.0</default>
+      <constraints>
+        <minimum>0.0</minimum>
+        <maximum>1.0</maximum>
+      </constraints>
+    </double>
+    <string>
+      <name>coords_dir</name>
+      <label>Patch Coordinates Directory</label>
+      <description>Container-internal path for saving/restoring patch coordinates. Leave empty to auto-generate based on magnification and patch size settings.</description>
+      <longflag>coords_dir</longflag>
+      <default></default>
+    </string>
+    <string-enumeration>
+      <name>saveas</name>
+      <label>Output Format</label>
+      <description>File format for saving embedding features.</description>
+      <longflag>saveas</longflag>
+      <element>h5</element>
+      <element>pt</element>
+      <default>h5</default>
+    </string-enumeration>
+  </parameters>
+
+  <parameters advanced="true">
+    <label>Segmentation</label>
+    <description>Tissue segmentation parameters (used when task is seg or all)</description>
+    <string-enumeration>
+      <name>segmenter</name>
+      <label>Segmenter Model</label>
+      <description>Model used for tissue segmentation. "hest" (DeepLabV3) works for most stain types. "grandqc" is faster and optimised for H&amp;E.</description>
+      <longflag>segmenter</longflag>
+      <element>hest</element>
+      <element>grandqc</element>
+      <default>hest</default>
+    </string-enumeration>
+    <double>
+      <name>seg_conf_thresh</name>
+      <label>Segmentation Confidence Threshold</label>
+      <description>Confidence threshold for binarizing tissue predictions (0.0 to 1.0). Lower values retain more tissue; try 0.4 if tissue is being under-segmented.</description>
+      <longflag>seg_conf_thresh</longflag>
+      <default>0.5</default>
+      <constraints>
+        <minimum>0.0</minimum>
+        <maximum>1.0</maximum>
+      </constraints>
+    </double>
+    <boolean>
+      <name>remove_holes</name>
+      <label>Remove Holes in Tissue</label>
+      <description>Fill holes within tissue regions during segmentation.</description>
+      <longflag>remove_holes</longflag>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>remove_artifacts</name>
+      <label>Remove Artifacts</label>
+      <description>Run the artifact removal model to exclude staining artifacts and debris.</description>
+      <longflag>remove_artifacts</longflag>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>remove_penmarks</name>
+      <label>Remove Pen Marks</label>
+      <description>Remove pen markings from the tissue mask.</description>
+      <longflag>remove_penmarks</longflag>
+      <default>false</default>
+    </boolean>
+  </parameters>
+
+  <parameters advanced="true">
+    <label>Slide Encoder</label>
+    <description>Optional slide-level embedding (used in addition to patch embeddings)</description>
+    <string-enumeration>
+      <name>slide_encoder</name>
+      <label>Slide Encoder Model</label>
+      <description>Optional model for generating a single slide-level feature vector. Select "none" to skip slide-level encoding.</description>
+      <longflag>slide_encoder</longflag>
+      <element>none</element>
+      <element>threads</element>
+      <element>titan</element>
+      <element>prism</element>
+      <element>chief</element>
+      <element>gigapath</element>
+      <element>madeleine</element>
+      <element>feather</element>
+      <element>abmil</element>
+      <element>mean-conch_v1</element>
+      <element>mean-conch_v15</element>
+      <element>mean-uni_v1</element>
+      <element>mean-uni_v2</element>
+      <element>mean-ctranspath</element>
+      <element>mean-phikon</element>
+      <element>mean-resnet50</element>
+      <element>mean-gigapath</element>
+      <default>none</default>
+    </string-enumeration>
+    <string>
+      <name>slide_encoder_ckpt_path</name>
+      <label>Slide Encoder Checkpoint Path</label>
+      <description>Container-internal path to a locally downloaded slide encoder checkpoint file. Leave empty to download automatically.</description>
+      <longflag>slide_encoder_ckpt_path</longflag>
+      <default></default>
+    </string>
+  </parameters>
+
+  <parameters advanced="true">
+    <label>Execution</label>
+    <description>Performance and execution parameters</description>
+    <integer>
+      <name>gpu</name>
+      <label>GPU Index</label>
+      <description>Index of the GPU to use for inference. Use -1 for CPU (slow).</description>
+      <longflag>gpu</longflag>
+      <default>0</default>
+    </integer>
+    <integer>
+      <name>batch_size</name>
+      <label>Default Batch Size</label>
+      <description>Default batch size for segmentation and feature extraction. Can be overridden per stage.</description>
+      <longflag>batch_size</longflag>
+      <default>64</default>
+    </integer>
+    <integer>
+      <name>seg_batch_size</name>
+      <label>Segmentation Batch Size</label>
+      <description>Batch size for segmentation inference. 0 uses the default batch size.</description>
+      <longflag>seg_batch_size</longflag>
+      <default>0</default>
+    </integer>
+    <integer>
+      <name>feat_batch_size</name>
+      <label>Feature Extraction Batch Size</label>
+      <description>Batch size for feature extraction inference. 0 uses the default batch size.</description>
+      <longflag>feat_batch_size</longflag>
+      <default>0</default>
+    </integer>
+    <integer>
+      <name>max_workers</name>
+      <label>Max Workers</label>
+      <description>Maximum number of concurrent data-loading workers. 0 means auto-detect.</description>
+      <longflag>max_workers</longflag>
+      <default>0</default>
+    </integer>
+    <boolean>
+      <name>skip_errors</name>
+      <label>Skip Errors</label>
+      <description>Continue processing remaining slides if an error occurs on one slide.</description>
+      <longflag>skip_errors</longflag>
+      <default>false</default>
+    </boolean>
+    <boolean>
+      <name>search_nested</name>
+      <label>Search Nested Directories</label>
+      <description>Recursively search subdirectories of the WSI source directory for slide files.</description>
+      <longflag>search_nested</longflag>
+      <default>false</default>
+    </boolean>
+  </parameters>
+
+  <parameters advanced="true">
+    <label>WSI Source Options</label>
+    <description>Advanced options for WSI file discovery and reading</description>
+    <string>
+      <name>wsi_ext</name>
+      <label>WSI File Extensions</label>
+      <description>Comma-separated list of allowed file extensions (e.g., ".svs,.ndpi,.tif"). Leave empty to accept all supported formats.</description>
+      <longflag>wsi_ext</longflag>
+      <default></default>
+    </string>
+    <string-enumeration>
+      <name>reader_type</name>
+      <label>WSI Reader</label>
+      <description>Force a specific WSI reader engine. "auto" selects based on file extension.</description>
+      <longflag>reader_type</longflag>
+      <element>auto</element>
+      <element>openslide</element>
+      <element>cucim</element>
+      <element>image</element>
+      <element>sdpc</element>
+      <default>auto</default>
+    </string-enumeration>
+    <string>
+      <name>custom_mpp_keys</name>
+      <label>Custom MPP Metadata Keys</label>
+      <description>Comma-separated list of metadata keys to use for reading microns-per-pixel (MPP) from WSI metadata. Useful for non-standard formats.</description>
+      <longflag>custom_mpp_keys</longflag>
+      <default></default>
+    </string>
+    <string>
+      <name>custom_list_of_wsis</name>
+      <label>Custom WSI List (CSV)</label>
+      <description>Container-internal path to a CSV file listing specific WSI filenames to process. Leave empty to process all files in the source directory.</description>
+      <longflag>custom_list_of_wsis</longflag>
+      <default></default>
+    </string>
+    <string>
+      <name>wsi_cache</name>
+      <label>WSI Cache Directory</label>
+      <description>Container-internal path to a fast local disk (e.g., SSD) for staging WSI files before processing. Improves throughput when the source is on slow storage.</description>
+      <longflag>wsi_cache</longflag>
+      <default></default>
+    </string>
+    <integer>
+      <name>cache_batch_size</name>
+      <label>Cache Batch Size</label>
+      <description>Maximum number of slides to stage in the WSI cache at once.</description>
+      <longflag>cache_batch_size</longflag>
+      <default>32</default>
+    </integer>
+  </parameters>
+
+</executable>

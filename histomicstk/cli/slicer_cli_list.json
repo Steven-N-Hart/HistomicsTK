@@ -33,5 +33,9 @@
 
   "SuperpixelSegmentation": {
     "type"    : "python"
+  },
+
+  "TridentEmbeddings": {
+    "type"    : "python"
   }
 }

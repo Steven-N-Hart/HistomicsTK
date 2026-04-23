@@ -74,6 +74,14 @@ RUN pip install --no-cache-dir . --find-links https://girder.github.io/large_ima
     # Make duplicate files not take extra space in the docker image \
     rdfind -minsize 32768 -makehardlinks true -makeresultsfile false /usr/local
 
+# Install TRIDENT for WSI embedding generation.
+# Requires a named build context: docker buildx build --build-context trident=/path/to/TRIDENT
+COPY --from=trident . /opt/TRIDENT/
+# Pre-install CUDA-enabled PyTorch so TRIDENT doesn't pull the CPU-only default wheel.
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu124 && \
+    pip install --no-cache-dir /opt/TRIDENT && \
+    rm -rf /root/.cache/pip/*
+
 # Show what was installed
 RUN pip freeze
 

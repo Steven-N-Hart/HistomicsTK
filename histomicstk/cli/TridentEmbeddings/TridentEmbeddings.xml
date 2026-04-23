@@ -44,6 +44,13 @@
       <longflag>slide_item_ids</longflag>
       <default></default>
     </string>
+    <string>
+      <name>output_folder_id</name>
+      <label>Job Summary Folder</label>
+      <description>Girder folder ID where a "TRIDENT Runs/&lt;job_dir_basename&gt;" subfolder will be created containing the job-summary item (config + log file). Leave empty to use the invoking user's Private folder. Note: tissue-segmentation annotations are always posted back to the source slide items, and on-disk paths to feature .h5 files are stamped into source-item metadata — those are not affected by this setting.</description>
+      <longflag>output_folder_id</longflag>
+      <default></default>
+    </string>
   </parameters>
 
   <parameters advanced="true">

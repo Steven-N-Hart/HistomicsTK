@@ -40,6 +40,10 @@ def _resolve_api_url(url):
 def _stage_slides_from_girder(item_ids, wsi_dir, api_url, token):
     """Download every file of each Girder item into a per-item subdir of wsi_dir.
 
+    Handles two layouts that the server-side staging job may produce:
+      - Directory layout (DICOMweb): wsi_dir/<item_name>/<instance>.dcm
+      - Flat symlink (local filesystem): wsi_dir/<item_name> -> /full/path/slide.svs
+
     Returns a list of dicts, one per item, with keys:
       - item_id:  Girder item id
       - rel_path: representative slide file relative to wsi_dir (for the CSV)
@@ -73,24 +77,45 @@ def _stage_slides_from_girder(item_ids, wsi_dir, api_url, token):
             print(f'  WARNING: item {item_name} ({item_id}) has no files; skipping')
             continue
 
+        # The server-side staging job may have already placed the slide at
+        # item_dir as a flat symlink (local FS items) or a populated directory
+        # (DICOMweb items).  Handle both without attempting a redundant download.
         if os.path.isdir(item_dir) and os.listdir(item_dir):
+            # Directory layout (DICOMweb or prior download): already staged.
             print(f'  Skipping download for item {item_name}: {item_dir} already populated')
+            rep_name = next(
+                (f['name'] for f in files if str(f['_id']) == str(rep_file_id)),
+                files[0]['name'],
+            )
+            staged.append({
+                'item_id': item_id,
+                'rel_path': os.path.join(item_name, rep_name),
+                'stem': os.path.splitext(os.path.basename(rep_name))[0],
+            })
+        elif os.path.exists(item_dir) and not os.path.isdir(item_dir):
+            # Flat layout: server staged a symlink (or plain file) directly at
+            # item_dir.  Use it as-is — do NOT try makedirs on a non-directory.
+            print(f'  Using pre-staged flat file for item {item_name}: {item_dir}')
+            staged.append({
+                'item_id': item_id,
+                'rel_path': item_name,
+                'stem': os.path.splitext(item_name)[0],
+            })
         else:
             print(f'  Downloading item {item_name} ({item_id}) -> {item_dir}')
             os.makedirs(item_dir, exist_ok=True)
             for f in files:
                 dest = os.path.join(item_dir, f['name'])
                 gc.downloadFile(f['_id'], dest)
-
-        rep_name = next(
-            (f['name'] for f in files if str(f['_id']) == str(rep_file_id)),
-            files[0]['name'],
-        )
-        staged.append({
-            'item_id': item_id,
-            'rel_path': os.path.join(item_name, rep_name),
-            'stem': os.path.splitext(os.path.basename(rep_name))[0],
-        })
+            rep_name = next(
+                (f['name'] for f in files if str(f['_id']) == str(rep_file_id)),
+                files[0]['name'],
+            )
+            staged.append({
+                'item_id': item_id,
+                'rel_path': os.path.join(item_name, rep_name),
+                'stem': os.path.splitext(os.path.basename(rep_name))[0],
+            })
 
     return staged
 

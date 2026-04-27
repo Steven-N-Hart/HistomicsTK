@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<executable>
+  <category>HistomicsTK</category>
+  <title>Apply Slide Classifier</title>
+  <description>Apply a trained slide classifier to a folder of slides. Reads TRIDENT embeddings from each item's meta.trident.features_h5, runs the model, and writes per-class probabilities to item metadata as _slideClassifierPrediction.</description>
+  <version>0.1.0</version>
+  <license>Apache 2.0</license>
+  <contributor>HistomicsUI</contributor>
+
+  <parameters>
+    <label>Input</label>
+    <description>Folder to predict and model to use</description>
+    <string>
+      <name>folder_id</name>
+      <label>Target Folder ID</label>
+      <description>Girder folder containing slides with TRIDENT embeddings to predict on.</description>
+      <longflag>folder_id</longflag>
+      <default></default>
+    </string>
+    <string>
+      <name>model_path</name>
+      <label>Model Path</label>
+      <description>Container-internal filesystem path to model.pkl produced by Build Slide Classifier.</description>
+      <longflag>model_path</longflag>
+      <default></default>
+    </string>
+  </parameters>
+
+  <parameters>
+    <label>Output</label>
+    <description>Where to write prediction results</description>
+    <string>
+      <name>job_dir</name>
+      <label>Output Directory</label>
+      <description>Container-internal path where predictions.json will be written. Leave empty to skip file output.</description>
+      <longflag>job_dir</longflag>
+      <default></default>
+    </string>
+  </parameters>
+
+  <parameters advanced="true">
+    <label>Girder API URL and Key</label>
+    <description>Auto-injected by Slicer CLI Web; do not set manually.</description>
+    <string>
+      <name>girderApiUrl</name>
+      <longflag>api-url</longflag>
+      <label>Girder API URL</label>
+      <description>A Girder API URL (auto-injected).</description>
+      <default></default>
+    </string>
+    <string>
+      <name>girderToken</name>
+      <longflag>girder-token</longflag>
+      <label>Girder Token</label>
+      <description>A Girder token (auto-injected).</description>
+      <default></default>
+    </string>
+  </parameters>
+</executable>

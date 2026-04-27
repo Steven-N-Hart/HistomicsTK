@@ -37,5 +37,13 @@
 
   "TridentEmbeddings": {
     "type"    : "python"
+  },
+
+  "BuildSlideClassifier": {
+    "type"    : "python"
+  },
+
+  "ApplySlideClassifier": {
+    "type"    : "python"
   }
 }

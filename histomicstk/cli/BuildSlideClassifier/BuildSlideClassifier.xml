@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<executable>
+  <category>HistomicsTK</category>
+  <title>Build Slide Classifier</title>
+  <description>Train a slide-level classifier from TRIDENT embeddings. Reads the folder's _aiExperiment metadata (classes) and per-item _aiSplit and _slideClassifierLabel metadata, fits a classifier, and posts metrics and predictions back to Girder.</description>
+  <version>0.2.0</version>
+  <license>Apache 2.0</license>
+  <contributor>HistomicsUI</contributor>
+
+  <parameters>
+    <label>Experiment</label>
+    <description>Source folder and label configuration</description>
+    <string>
+      <name>folder_id</name>
+      <label>Experiment Folder ID</label>
+      <description>Girder folder containing the Slide Classifier configuration and items with assigned splits and labels.</description>
+      <longflag>folder_id</longflag>
+      <default></default>
+    </string>
+    <string-enumeration>
+      <name>feature_kind</name>
+      <label>Feature Source</label>
+      <description>How to obtain a fixed-size embedding per slide. "mean_pool_patch" averages the patch embeddings stored at meta.trident.features_h5. "slide" uses a slide-level encoder output.</description>
+      <longflag>feature_kind</longflag>
+      <element>mean_pool_patch</element>
+      <element>slide</element>
+      <default>mean_pool_patch</default>
+    </string-enumeration>
+    <string>
+      <name>slide_encoder</name>
+      <label>Slide Encoder Name</label>
+      <description>When Feature Source is "slide", the slide-encoder folder name (looks for &lt;coords_dir&gt;/slide_features_&lt;slide_encoder&gt;/&lt;stem&gt;.h5). Ignored otherwise.</description>
+      <longflag>slide_encoder</longflag>
+      <default></default>
+    </string>
+  </parameters>
+
+  <parameters>
+    <label>Model</label>
+    <description>Classifier configuration</description>
+    <string-enumeration>
+      <name>model_type</name>
+      <label>Model</label>
+      <description>Classifier head trained on the embeddings.</description>
+      <longflag>model_type</longflag>
+      <element>logistic</element>
+      <element>mlp</element>
+      <default>logistic</default>
+    </string-enumeration>
+    <string-enumeration>
+      <name>task_type</name>
+      <label>Task Type</label>
+      <description>"multilabel" trains an independent binary classifier per class. "multiclass" trains a single classifier where each slide belongs to exactly one class.</description>
+      <longflag>task_type</longflag>
+      <element>multilabel</element>
+      <element>multiclass</element>
+      <default>multilabel</default>
+    </string-enumeration>
+    <double>
+      <name>regularization</name>
+      <label>Regularization (C)</label>
+      <description>Inverse regularization strength for logistic regression.</description>
+      <longflag>regularization</longflag>
+      <default>1.0</default>
+    </double>
+    <integer>
+      <name>max_iter</name>
+      <label>Max Iterations</label>
+      <description>Maximum solver iterations.</description>
+      <longflag>max_iter</longflag>
+      <default>1000</default>
+    </integer>
+    <integer>
+      <name>random_seed</name>
+      <label>Random Seed</label>
+      <description>Seed for reproducibility.</description>
+      <longflag>random_seed</longflag>
+      <default>42</default>
+    </integer>
+  </parameters>
+
+  <parameters>
+    <label>Output</label>
+    <description>Where to write results</description>
+    <string>
+      <name>job_dir</name>
+      <label>Output Directory</label>
+      <description>Container-internal path where model.pkl, metrics.json, and predictions.csv will be written.</description>
+      <longflag>job_dir</longflag>
+      <default></default>
+    </string>
+    <string>
+      <name>output_folder_id</name>
+      <label>Results Folder</label>
+      <description>Girder folder ID where the run results item will be created. Leave empty to use the invoking user's Private folder.</description>
+      <longflag>output_folder_id</longflag>
+      <default></default>
+    </string>
+  </parameters>
+
+  <parameters advanced="true">
+    <label>Girder API URL and Key</label>
+    <description>Auto-injected by Slicer CLI Web; do not set manually.</description>
+    <string>
+      <name>girderApiUrl</name>
+      <longflag>api-url</longflag>
+      <label>Girder API URL</label>
+      <description>A Girder API URL (auto-injected).</description>
+      <default></default>
+    </string>
+    <string>
+      <name>girderToken</name>
+      <longflag>girder-token</longflag>
+      <label>Girder Token</label>
+      <description>A Girder token (auto-injected).</description>
+      <default></default>
+    </string>
+  </parameters>
+</executable>

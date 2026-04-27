@@ -63,8 +63,13 @@ def main(args):
 
     print(f'Loaded model: classes={classes}, task_type={task_type}, feature_kind={feature_kind}')
 
-    items = list(gc.listItem(args.folder_id, limit=10000))
-    print(f'Folder has {len(items)} item(s).')
+    if args.item_ids:
+        id_set = set(i.strip() for i in args.item_ids.split(',') if i.strip())
+        items = [gc.getItem(i) for i in id_set]
+        print(f'Predicting on {len(items)} selected item(s).')
+    else:
+        items = list(gc.listItem(args.folder_id, limit=10000))
+        print(f'Folder has {len(items)} item(s).')
 
     results = []
     skipped = 0

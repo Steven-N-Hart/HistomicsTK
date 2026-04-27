@@ -36,6 +36,13 @@
       <longflag>job_dir</longflag>
       <default></default>
     </string>
+    <string>
+      <name>item_ids</name>
+      <label>Item IDs (optional)</label>
+      <description>Comma-separated Girder item IDs to predict on. Leave empty to predict on all items in the folder.</description>
+      <longflag>item_ids</longflag>
+      <default></default>
+    </string>
   </parameters>
 
   <parameters advanced="true">

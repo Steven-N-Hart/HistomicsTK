@@ -45,5 +45,13 @@
 
   "ApplySlideClassifier": {
     "type"    : "python"
+  },
+
+  "BuildPixelClassifier": {
+    "type"    : "python"
+  },
+
+  "ApplyPixelClassifier": {
+    "type"    : "python"
   }
 }

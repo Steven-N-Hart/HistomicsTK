@@ -1,0 +1,11 @@
+FROM dsarchive/histomicstk:latest
+
+# Copy new pixel classifier CLIs and shared utilities into the existing image.
+# No pip reinstall needed — CLIs are discovered at runtime from /HistomicsTK/histomicstk/cli/.
+COPY histomicstk/cli/BuildPixelClassifier/ /HistomicsTK/histomicstk/cli/BuildPixelClassifier/
+COPY histomicstk/cli/ApplyPixelClassifier/ /HistomicsTK/histomicstk/cli/ApplyPixelClassifier/
+COPY histomicstk/cli/pixel_classifier_utils.py /HistomicsTK/histomicstk/cli/pixel_classifier_utils.py
+COPY histomicstk/cli/slicer_cli_list.json /HistomicsTK/histomicstk/cli/slicer_cli_list.json
+
+# Verify the new CLIs are discoverable
+RUN python -m slicer_cli_web.cli_list_entrypoint --list_cli | grep -E "BuildPixelClassifier|ApplyPixelClassifier"

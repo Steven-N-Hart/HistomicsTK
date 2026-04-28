@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<executable>
+  <category>HistomicsTK</category>
+  <title>Apply Pixel Classifier</title>
+  <description>Apply a trained pixel classifier model to a whole-slide image. Downloads the model from Girder, runs inference patch-by-patch, and posts a prediction overlay annotation back to the target slide item.</description>
+  <version>0.1.0</version>
+  <license>Apache 2.0</license>
+  <contributor>HistomicsUI</contributor>
+
+  <parameters>
+    <label>Input</label>
+    <description>Target slide and model</description>
+    <string>
+      <name>item_id</name>
+      <label>Target Slide Item ID</label>
+      <description>Girder item ID of the whole-slide image to apply the classifier to.</description>
+      <longflag>item_id</longflag>
+      <default></default>
+    </string>
+    <string>
+      <name>model_item_id</name>
+      <label>Model Item ID</label>
+      <description>Girder item ID containing the trained model.pkl file uploaded by BuildPixelClassifier.</description>
+      <longflag>model_item_id</longflag>
+      <default></default>
+    </string>
+  </parameters>
+
+  <parameters>
+    <label>Output</label>
+    <description>Where to write intermediate files</description>
+    <string>
+      <name>job_dir</name>
+      <label>Output Directory</label>
+      <description>Container-internal path for temporary files during inference.</description>
+      <longflag>job_dir</longflag>
+      <default></default>
+    </string>
+  </parameters>
+
+  <parameters advanced="true">
+    <label>Girder API URL and Key</label>
+    <description>Auto-injected by Slicer CLI Web; do not set manually.</description>
+    <string>
+      <name>girderApiUrl</name>
+      <longflag>api-url</longflag>
+      <label>Girder API URL</label>
+      <description>A Girder API URL (auto-injected).</description>
+      <default></default>
+    </string>
+    <string>
+      <name>girderToken</name>
+      <longflag>girder-token</longflag>
+      <label>Girder Token</label>
+      <description>A Girder token (auto-injected).</description>
+      <default></default>
+    </string>
+  </parameters>
+</executable>

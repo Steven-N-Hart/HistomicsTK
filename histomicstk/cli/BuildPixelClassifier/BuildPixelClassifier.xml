@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<executable>
+  <category>HistomicsTK</category>
+  <title>Build Pixel Classifier</title>
+  <description>Train a pixel-level classifier on brush annotations from a whole-slide image. Reads a pixelmap annotation for labeled patch centers, extracts embeddings (TRIDENT h5 primary path, ResNet-18 GPU fallback), trains a scikit-learn classifier head, generates a full-slide prediction overlay, and posts results back to Girder.</description>
+  <version>0.1.0</version>
+  <license>Apache 2.0</license>
+  <contributor>HistomicsUI</contributor>
+
+  <parameters>
+    <label>Experiment</label>
+    <description>Source slide and annotation</description>
+    <string>
+      <name>item_id</name>
+      <label>Slide Item ID</label>
+      <description>Girder item ID of the whole-slide image to train on.</description>
+      <longflag>item_id</longflag>
+      <default></default>
+    </string>
+    <string>
+      <name>annotation_id</name>
+      <label>Training Annotation ID</label>
+      <description>Girder annotation ID of the pixelmap annotation containing labeled brush strokes.</description>
+      <longflag>annotation_id</longflag>
+      <default></default>
+    </string>
+    <string>
+      <name>classes_json</name>
+      <label>Class Definitions (JSON)</label>
+      <description>JSON array of class definition objects, e.g. [{"name":"Tumor","fillColor":"rgba(255,0,0,0.4)"},{"name":"Stroma","fillColor":"rgba(0,200,0,0.4)"}]. Order must match pixelmap category indices.</description>
+      <longflag>classes_json</longflag>
+      <default>[]</default>
+    </string>
+    <string>
+      <name>session_name</name>
+      <label>Session Name</label>
+      <description>Name of the pixel classifier session (used for annotation and model item naming).</description>
+      <longflag>session_name</longflag>
+      <default>PixelClassifier</default>
+    </string>
+    <integer>
+      <name>iteration</name>
+      <label>Iteration Number</label>
+      <description>1-based training iteration counter. Used in overlay annotation naming.</description>
+      <longflag>iteration</longflag>
+      <default>1</default>
+    </integer>
+  </parameters>
+
+  <parameters>
+    <label>Model</label>
+    <description>Classifier configuration</description>
+    <string-enumeration>
+      <name>model_type</name>
+      <label>Model Type</label>
+      <description>Classifier architecture. trident_linear: logistic regression on pre-computed TRIDENT patch embeddings (fastest). trident_mlp: MLP on TRIDENT embeddings. resnet_linear: logistic regression on GPU ResNet-18 features (fallback when no TRIDENT embeddings). random_forest: Random Forest on handcrafted color/texture features (CPU-only fallback).</description>
+      <longflag>model_type</longflag>
+      <element>trident_linear</element>
+      <element>trident_mlp</element>
+      <element>resnet_linear</element>
+      <element>random_forest</element>
+      <default>trident_linear</default>
+    </string-enumeration>
+    <integer>
+      <name>magnification</name>
+      <label>Magnification</label>
+      <description>Target magnification level for patch extraction and inference.</description>
+      <longflag>magnification</longflag>
+      <default>20</default>
+      <constraints>
+        <minimum>5</minimum>
+        <maximum>80</maximum>
+        <step>1</step>
+      </constraints>
+    </integer>
+    <integer>
+      <name>patch_size</name>
+      <label>Patch Size (pixels)</label>
+      <description>Square patch size in pixels for feature extraction. 512 recommended for TRIDENT models; 256 for ResNet; 64-128 for random_forest.</description>
+      <longflag>patch_size</longflag>
+      <default>512</default>
+    </integer>
+    <integer>
+      <name>n_estimators</name>
+      <label>Number of Trees</label>
+      <description>Number of trees for random_forest model type. Ignored for other model types.</description>
+      <longflag>n_estimators</longflag>
+      <default>100</default>
+    </integer>
+    <integer>
+      <name>random_seed</name>
+      <label>Random Seed</label>
+      <description>Seed for reproducibility.</description>
+      <longflag>random_seed</longflag>
+      <default>42</default>
+    </integer>
+  </parameters>
+
+  <parameters>
+    <label>Output</label>
+    <description>Where to write results</description>
+    <string>
+      <name>job_dir</name>
+      <label>Output Directory</label>
+      <description>Container-internal path where model.pkl and training_report.json will be written.</description>
+      <longflag>job_dir</longflag>
+      <default></default>
+    </string>
+    <string>
+      <name>output_folder_id</name>
+      <label>Results Folder</label>
+      <description>Girder folder ID where the model item will be created. Leave empty to use the invoking user's Private folder.</description>
+      <longflag>output_folder_id</longflag>
+      <default></default>
+    </string>
+  </parameters>
+
+  <parameters advanced="true">
+    <label>Girder API URL and Key</label>
+    <description>Auto-injected by Slicer CLI Web; do not set manually.</description>
+    <string>
+      <name>girderApiUrl</name>
+      <longflag>api-url</longflag>
+      <label>Girder API URL</label>
+      <description>A Girder API URL (auto-injected).</description>
+      <default></default>
+    </string>
+    <string>
+      <name>girderToken</name>
+      <longflag>girder-token</longflag>
+      <label>Girder Token</label>
+      <description>A Girder token (auto-injected).</description>
+      <default></default>
+    </string>
+  </parameters>
+</executable>

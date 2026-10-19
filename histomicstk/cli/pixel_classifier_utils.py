@@ -233,6 +233,75 @@ def read_pixelmap_annotation(gc, annotation_id):
     return coords, categories, boundaries
 
 
+def build_roi_mask(gc, roi_annotation_id):
+    """Build a shapely union geometry from all polygon/shape elements in a ROI annotation.
+
+    Returns a shapely geometry (union of all polygons) or ``None`` when
+    ``roi_annotation_id`` is empty.  Patch centers that do not lie inside the
+    returned geometry should be discarded.
+    """
+    if not roi_annotation_id:
+        return None
+
+    from shapely.affinity import rotate as shapely_rotate
+    from shapely.geometry import Point, Polygon
+    from shapely.ops import unary_union
+
+    annotation = gc.get(f'annotation/{roi_annotation_id}')
+    elements = (annotation.get('annotation') or {}).get('elements') or []
+
+    geoms = []
+    for el in elements:
+        el_type = el.get('type', '')
+        try:
+            if el_type in ('polygon', 'polyline'):
+                pts = el.get('points') or []
+                if len(pts) >= 3:
+                    geoms.append(Polygon([(p['x'], p['y']) for p in pts]))
+            elif el_type == 'circle':
+                c = el.get('center') or {}
+                r = el.get('radius', 0)
+                if r > 0:
+                    geoms.append(Point(c.get('x', 0), c.get('y', 0)).buffer(r))
+            elif el_type in ('rectangle', 'ellipse'):
+                c = el.get('center') or {}
+                w, h = el.get('width', 0), el.get('height', 0)
+                if w > 0 and h > 0:
+                    cx, cy = c.get('x', 0), c.get('y', 0)
+                    rect = Polygon([
+                        (cx - w / 2, cy - h / 2),
+                        (cx + w / 2, cy - h / 2),
+                        (cx + w / 2, cy + h / 2),
+                        (cx - w / 2, cy + h / 2),
+                    ])
+                    angle = el.get('rotation', 0)
+                    if angle:
+                        rect = shapely_rotate(rect, -angle,
+                                              origin=(cx, cy), use_radians=True)
+                    geoms.append(rect)
+        except Exception:
+            continue
+
+    if not geoms:
+        print(f'  ROI annotation {roi_annotation_id} contained no usable shapes.')
+        return None
+
+    roi = unary_union(geoms)
+    print(f'  ROI built from {len(geoms)} element(s); area = {roi.area:.0f} px².')
+    return roi
+
+
+def filter_coords_by_roi(patch_centers, roi_geom):
+    """Return only those patch centers that lie inside ``roi_geom``.
+
+    If ``roi_geom`` is ``None`` the full list is returned unchanged.
+    """
+    if roi_geom is None:
+        return list(patch_centers)
+    from shapely.geometry import Point
+    return [(cx, cy) for cx, cy in patch_centers if roi_geom.contains(Point(cx, cy))]
+
+
 def post_pixelmap_annotation(
         gc, item_id, label_array, categories,
         annotation_name, patch_size, magnification,
